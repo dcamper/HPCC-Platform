@@ -95,7 +95,7 @@ namespace KafkaPlugin
             // Containerized configurations are stored within a helm chart and loaded by
             // the running process before we get to this point
 
-            fullConfigPath.set("plugins/kafka");
+            fullConfigPath.set("kafka");
 
             switch (confType)
             {
@@ -111,7 +111,7 @@ namespace KafkaPlugin
                     break;
             }
 
-            Owned<IProperties> properties = getComponentConfigSP()->getElements(fullConfigPath.str());
+            Owned<const IPropertyTree> properties = getComponentConfigSP()->getPropTree(fullConfigPath.str());
             props.set(properties->getIterator());
 #else
             // Non-containerized configurations are stored within physical files located
