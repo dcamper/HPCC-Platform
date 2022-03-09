@@ -87,16 +87,37 @@ namespace KafkaPlugin
     {
         if (topicName && (confType == t_Global || *topicName) && configPtr)
         {
+            StringBuffer fullConfigPath;
+            std::string errStr;
+            Owned<IPropertyIterator> props;
+
 #ifdef _CONTAINERIZED
             // Containerized configurations are stored within a helm chart and loaded by
             // the running process before we get to this point
+
+            fullConfigPath.set("plugins/kafka");
+
+            switch (confType)
+            {
+                case t_Producer:
+                    fullConfigPath.appendf("/producers/topics[name='%s']/params", topicName);
+                    break;
+                case t_Consumer:
+                    fullConfigPath.appendf("/consumers/topics[name='%s']/params", topicName);
+                    break;
+                default:
+                    // Either global or unknown
+                    fullConfigPath.append("/global/params");
+                    break;
+            }
+
+            Owned<IProperties> properties = getComponentConfigSP()->getElements(fullConfigPath.str());
+            props.set(properties->getIterator());
 #else
             // Non-containerized configurations are stored within physical files located
             // in the configuration directory (typically /etc/HPCCSystems)
 
-            std::string errStr;
-            StringBuffer fullConfigPath;
-
+            // Build full path to the configuration file we're looking for
             fullConfigPath.append(hpccBuildInfo.configDir).append(PATHSEPSTR).append("kafka_");
             switch (confType)
             {
@@ -114,7 +135,8 @@ namespace KafkaPlugin
             fullConfigPath.append(".conf");
 
             Owned<IProperties> properties = createProperties(fullConfigPath.str(), true);
-            Owned<IPropertyIterator> props = properties->getIterator();
+            props.set(properties->getIterator());
+#endif
 
             ForEach(*props)
             {
@@ -146,7 +168,6 @@ namespace KafkaPlugin
                     }
                 }
             }
-#endif
         }
     }
 
