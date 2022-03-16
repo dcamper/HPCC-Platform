@@ -116,29 +116,34 @@ namespace KafkaPlugin
             ForEach(*props)
             {
                 IPropertyTree& propTree = props->query();
-                const char* key = propTree.queryName();
+                Owned<IAttributeIterator> attributes = propTree.getAttributes();
 
-                if (key && *key)
+                ForEach(*attributes)
                 {
-                    if (strncmp(key, "metadata.broker.list", 20) != 0)
-                    {
-                        const char* value = propTree.queryValue();
+                    const char* key = attributes->queryName();
 
-                        if (value && *value)
+                    if (key && *key)
+                    {
+                        if (strncmp(key, "metadata.broker.list", 20) != 0)
                         {
-                            if (configPtr->set(key, value, errStr) != RdKafka::Conf::CONF_OK)
+                            const char* value = attributes->queryValue();
+
+                            if (value && *value)
                             {
-                                DBGLOG("Kafka: Failed to set config param from %s: '%s' = '%s'; error: '%s'", fullConfigPath.str(), key, value, errStr.c_str());
-                            }
-                            else if (traceLevel > 4)
-                            {
-                                DBGLOG("Kafka: Set config param from %s: '%s' = '%s'", fullConfigPath.str(), key, value);
+                                if (configPtr->set(key, value, errStr) != RdKafka::Conf::CONF_OK)
+                                {
+                                    DBGLOG("Kafka: Failed to set config param from %s: '%s' = '%s'; error: '%s'", fullConfigPath.str(), key, value, errStr.c_str());
+                                }
+                                else if (traceLevel > 4)
+                                {
+                                    DBGLOG("Kafka: Set config param from %s: '%s' = '%s'", fullConfigPath.str(), key, value);
+                                }
                             }
                         }
-                    }
-                    else
-                    {
-                        DBGLOG("Kafka: Setting '%s' ignored in config %s", key, fullConfigPath.str());
+                        else
+                        {
+                            DBGLOG("Kafka: Setting '%s' ignored in config %s", key, fullConfigPath.str());
+                        }
                     }
                 }
             }
