@@ -89,7 +89,6 @@ namespace KafkaPlugin
         {
             StringBuffer fullConfigPath;
             std::string errStr;
-            Owned<IPropertyIterator> props;
 
 #ifdef _CONTAINERIZED
             // Containerized configurations are stored within a helm chart and loaded by
@@ -112,7 +111,37 @@ namespace KafkaPlugin
             }
 
             Owned<const IPropertyTree> properties = getComponentConfigSP()->getPropTree(fullConfigPath.str());
-            props.set(properties->getIterator());
+            Owned<IPropertyTreeIterator> props = properties->getElements("*");
+
+            ForEach(*props)
+            {
+                IPropertyTree& propTree = props->query();
+                const char* key = propTree.queryName();
+
+                if (key && *key)
+                {
+                    if (strncmp(key, "metadata.broker.list", 20) != 0)
+                    {
+                        const char* value = propTree.queryValue();
+
+                        if (value && *value)
+                        {
+                            if (configPtr->set(key, value, errStr) != RdKafka::Conf::CONF_OK)
+                            {
+                                DBGLOG("Kafka: Failed to set config param from %s: '%s' = '%s'; error: '%s'", fullConfigPath.str(), key, value, errStr.c_str());
+                            }
+                            else if (traceLevel > 4)
+                            {
+                                DBGLOG("Kafka: Set config param from %s: '%s' = '%s'", fullConfigPath.str(), key, value);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        DBGLOG("Kafka: Setting '%s' ignored in config %s", key, fullConfigPath.str());
+                    }
+                }
+            }
 #else
             // Non-containerized configurations are stored within physical files located
             // in the configuration directory (typically /etc/HPCCSystems)
@@ -135,8 +164,7 @@ namespace KafkaPlugin
             fullConfigPath.append(".conf");
 
             Owned<IProperties> properties = createProperties(fullConfigPath.str(), true);
-            props.set(properties->getIterator());
-#endif
+            Owned<IPropertyIterator> props = properties->getIterator();
 
             ForEach(*props)
             {
@@ -168,6 +196,8 @@ namespace KafkaPlugin
                     }
                 }
             }
+#endif
+
         }
     }
 
