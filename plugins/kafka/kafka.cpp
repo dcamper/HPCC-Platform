@@ -240,10 +240,12 @@ namespace KafkaPlugin
     {
         if (consumerPtr)
         {
+#ifndef _CONTAINERIZED
             if (consumedRecCount > 0)
             {
                 consumerPtr->commitOffset(lastMsgOffset);
             }
+#endif
 
             delete(consumerPtr);
         }
@@ -610,6 +612,7 @@ namespace KafkaPlugin
         consumerPtr = NULL;
         topicPtr = NULL;
 
+#ifndef _CONTAINERIZED
         char cpath[_MAX_DIR];
 
         GetCurrentDirectory(_MAX_DIR, cpath);
@@ -625,6 +628,7 @@ namespace KafkaPlugin
             offsetPath.append(consumerGroup.c_str());
         }
         offsetPath.append(".offset");
+#endif
     }
 
     Consumer::~Consumer()
@@ -651,7 +655,9 @@ namespace KafkaPlugin
 
             if (!topicPtr.load(std::memory_order_relaxed))
             {
+#ifndef _CONTAINERIZED
                 initFileOffsetIfNotExist();
+#endif
 
                 std::string errStr;
                 RdKafka::Conf* globalConfig = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
@@ -687,6 +693,7 @@ namespace KafkaPlugin
                         // overrides of above settings
                         applyConsumerConfig(topic, topicConfPtr, traceLevel);
 
+#ifndef _CONTAINERIZED
                         // Ensure that some items are set a certain way
                         // by setting them after loading the external conf
                         topicConfPtr->set("auto.commit.enable", "false", errStr);
@@ -694,6 +701,7 @@ namespace KafkaPlugin
                         topicConfPtr->set("enable.auto.commit", "false", errStr);
                         topicConfPtr->set("offset.store.method", "file", errStr);
                         topicConfPtr->set("offset.store.path", offsetPath.str(), errStr);
+#endif
 
                         // Create the topic
                         topicPtr.store(RdKafka::Topic::create(consumerPtr, topic, topicConfPtr, errStr), std::memory_order_release);
@@ -743,6 +751,7 @@ namespace KafkaPlugin
         }
     }
 
+#ifndef _CONTAINERIZED
     void Consumer::commitOffset(__int64 offset) const
     {
         if (offset >= 0)
@@ -777,6 +786,7 @@ namespace KafkaPlugin
             }
         }
     }
+#endif
 
     void Consumer::event_cb(RdKafka::Event& event)
     {
@@ -1157,6 +1167,7 @@ namespace KafkaPlugin
         return new KafkaStreamedDataset(consumerObjPtr, allocator, ctx->queryContextLogger().queryTraceLevel(), maxRecords);
     }
 
+#ifndef _CONTAINERIZED
     ECL_KAFKA_API __int64 ECL_KAFKA_CALL setMessageOffset(ICodeContext* ctx, const char* brokers, const char* topic, const char* consumerGroup, __int32 partitionNum, __int64 newOffset)
     {
         Consumer consumerObj(brokers, topic, consumerGroup, partitionNum, ctx->queryContextLogger().queryTraceLevel());
@@ -1165,6 +1176,7 @@ namespace KafkaPlugin
 
         return newOffset;
     }
+#endif
 }
 
 //==============================================================================

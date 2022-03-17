@@ -267,6 +267,7 @@ extern "C++"
                  */
                 void prepForMessageFetch();
 
+#ifndef _CONTAINERIZED
                 /**
                  * Commits the given offset to storage so we can pick up
                  * where we left off in a subsequent read.
@@ -280,6 +281,7 @@ extern "C++"
                  * default offset
                  */
                 void initFileOffsetIfNotExist() const;
+#endif
 
                 /**
                  * Callback function.  librdkafka will call here, outside of a
@@ -295,7 +297,9 @@ extern "C++"
                 std::string                     brokers;        //!< One or more Kafka bootstrap brokers; comma-delimited; NameOrIP[:port]
                 std::string                     topic;          //!< The name of the topic to consume from
                 std::string                     consumerGroup;  //!< The name of the consumer group for this consumer object
+#ifndef _CONTAINERIZED
                 StringBuffer                    offsetPath;     //!< Full path to the Kafka topic offset file
+#endif
                 RdKafka::Consumer*              consumerPtr;    //!< Pointer to librdkafka consumer object
                 std::atomic<RdKafka::Topic*>    topicPtr;       //!< Pointer to librdkafka topic object
                 CriticalSection                 lock;           //!< Mutex to ensure that only one thread creates the librdkafka object pointers or starts/stops the queue
@@ -427,6 +431,7 @@ extern "C++"
          */
         ECL_KAFKA_API IRowStream* ECL_KAFKA_CALL getMessageDataset(ICodeContext* ctx, IEngineRowAllocator* allocator, const char* brokers, const char* topic, const char* consumerGroup, __int32 partitionNum, __int64 maxRecords);
 
+#ifndef _CONTAINERIZED
         /**
          * Resets the saved offsets for a partition.
          *
@@ -446,6 +451,7 @@ extern "C++"
          * @return  The offset that was saved
          */
         ECL_KAFKA_API __int64 ECL_KAFKA_CALL setMessageOffset(ICodeContext* ctx, const char* brokers, const char* topic, const char* consumerGroup, __int32 partitionNum, __int64 newOffset);
+#endif
     }
 }
 

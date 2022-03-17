@@ -33,7 +33,9 @@ SHARED kafka := SERVICE : plugin('kafka'), namespace('KafkaPlugin')
     BOOLEAN PublishMessage(CONST VARSTRING brokers, CONST VARSTRING topic, CONST UTF8 message, CONST UTF8 key) : cpp,action,context,entrypoint='publishMessage';
     INTEGER4 getTopicPartitionCount(CONST VARSTRING brokers, CONST VARSTRING topic) : cpp,action,context,entrypoint='getTopicPartitionCount';
     STREAMED DATASET(KafkaMessage) GetMessageDataset(CONST VARSTRING brokers, CONST VARSTRING topic, CONST VARSTRING consumerGroup, INTEGER4 partitionNum, INTEGER8 maxRecords) : cpp,action,context,entrypoint='getMessageDataset';
+#IF(NOT __CONTAINERIZED__)
     INTEGER8 SetMessageOffset(CONST VARSTRING brokers, CONST VARSTRING topic, CONST VARSTRING consumerGroup, INTEGER4 partitionNum, INTEGER8 newOffset) : cpp,action,context,entrypoint='setMessageOffset';
+#END
 
 END;
 
@@ -155,6 +157,7 @@ EXPORT KafkaConsumer(VARSTRING topic, VARSTRING brokers = 'localhost', VARSTRING
 
     END;
 
+#IF(NOT __CONTAINERIZED__)
     /**
      * Given a set of messages, presumably just consumed from an Apache Kafka
      * cluster, summarize the last-read message offsets on a per-partition basis.
@@ -251,5 +254,6 @@ EXPORT KafkaConsumer(VARSTRING topic, VARSTRING brokers = 'localhost', VARSTRING
 
         RETURN SetMessageOffsets(offsets);
     END;
+#END
 
 END;
