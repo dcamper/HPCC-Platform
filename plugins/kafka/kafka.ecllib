@@ -254,6 +254,6 @@ EXPORT KafkaConsumer(VARSTRING topic, VARSTRING brokers = 'localhost', VARSTRING
 
         RETURN SetMessageOffsets(offsets);
     END;
-#END
+#END // (NOT __CONTAINERIZED__)
 
 END;
