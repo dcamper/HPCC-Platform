@@ -39,8 +39,15 @@ namespace KafkaPlugin
     // File Constants
     //--------------------------------------------------------------------------
 
-    // Filename of global Kafka configuration file
-    const char* GLOBAL_CONFIG_FILENAME = "kafka_global.conf";
+    // Enumeration of different configuration types; this influences the files
+    // that are read in a legacy environment or which sections of a helm
+    // chart are read under Kubernetes
+    enum ConfType
+    {
+        t_Global,
+        t_Producer,
+        t_Consumer
+    };
 
     // The minimum number of seconds that a cached object can live
     // without activity
@@ -61,23 +68,50 @@ namespace KafkaPlugin
     //--------------------------------------------------------------------------
 
     /**
-     * Look for an optional configuration file and apply any found configuration
-     * parameters to a librdkafka configuration object.
+     * Look for an optional configuration and apply any found parameters to a
+     * librdkafka configuration object.  Code should tyupically call one of
+     * specific applyXXXConfig() functions instead.
      *
-     * @param   configFilePath      The path to a configuration file; it is not
-     *                              necessary for the file to exist
-     * @param   globalConfigPtr     A pointer to the configuration object that
+     * @param   confType            A ConfType enumeration value indicating
+     *                              which configuration to read; if an unknown
+     *                              value is found then the global configuration
+     *                              will be read
+     * @param   topicName           The name of a Kafka topic for which to read
+     *                              a configuration (which may not actually exist);
+     *                              value is unused if confType if t_Global
+     * @param   configPtr           A pointer to the configuration object that
      *                              will receive any found parameters
      * @param   traceLevel          The current log trace level
      */
-    static void applyConfig(const char* configFilePath, RdKafka::Conf* globalConfigPtr, int traceLevel)
+    static void _applyConfig(const ConfType confType, const char* topicName, RdKafka::Conf* configPtr, int traceLevel)
     {
-        if (configFilePath && *configFilePath && globalConfigPtr)
+        if (topicName && (confType == t_Global || *topicName) && configPtr)
         {
+#ifdef _CONTAINERIZED
+            // Containerized configurations are stored within a helm chart and loaded by
+            // the running process before we get to this point
+#else
+            // Non-containerized configurations are stored within physical files located
+            // in the configuration directory (typically /etc/HPCCSystems)
+
             std::string errStr;
             StringBuffer fullConfigPath;
 
-            fullConfigPath.append(hpccBuildInfo.configDir).append(PATHSEPSTR).append(configFilePath);
+            fullConfigPath.append(hpccBuildInfo.configDir).append(PATHSEPSTR).append("kafka_");
+            switch (confType)
+            {
+                case t_Producer:
+                    fullConfigPath.append("producer_topic_").append(topicName);
+                    break;
+                case t_Consumer:
+                    fullConfigPath.append("consumer_topic_").append(topicName);
+                    break;
+                default:
+                    // Either global or unknown
+                    fullConfigPath.append("global");
+                    break;
+            }
+            fullConfigPath.append(".conf");
 
             Owned<IProperties> properties = createProperties(fullConfigPath.str(), true);
             Owned<IPropertyIterator> props = properties->getIterator();
@@ -96,23 +130,39 @@ namespace KafkaPlugin
 
                         if (value && *value)
                         {
-                            if (globalConfigPtr->set(key.str(), value, errStr) != RdKafka::Conf::CONF_OK)
+                            if (configPtr->set(key.str(), value, errStr) != RdKafka::Conf::CONF_OK)
                             {
-                                DBGLOG("Kafka: Failed to set config param from file %s: '%s' = '%s'; error: '%s'", configFilePath, key.str(), value, errStr.c_str());
+                                DBGLOG("Kafka: Failed to set config param from file %s: '%s' = '%s'; error: '%s'", fullConfigPath.str(), key.str(), value, errStr.c_str());
                             }
                             else if (traceLevel > 4)
                             {
-                                DBGLOG("Kafka: Set config param from file %s: '%s' = '%s'", configFilePath, key.str(), value);
+                                DBGLOG("Kafka: Set config param from file %s: '%s' = '%s'", fullConfigPath.str(), key.str(), value);
                             }
                         }
                     }
                     else
                     {
-                        DBGLOG("Kafka: Setting '%s' ignored in config file %s", key.str(), configFilePath);
+                        DBGLOG("Kafka: Setting '%s' ignored in config file %s", key.str(), fullConfigPath.str());
                     }
                 }
             }
+#endif
         }
+    }
+
+    static void applyGlobalConfig(RdKafka::Conf* configPtr, int traceLevel)
+    {
+        _applyConfig(t_Global, "", configPtr, traceLevel);
+    }
+
+    static void applyProducerConfig(const std::string& topicName, RdKafka::Conf* configPtr, int traceLevel)
+    {
+        _applyConfig(t_Producer, topicName.c_str(), configPtr, traceLevel);
+    }
+
+    static void applyConsumerConfig(const std::string& topicName, RdKafka::Conf* configPtr, int traceLevel)
+    {
+        _applyConfig(t_Consumer, topicName.c_str(), configPtr, traceLevel);
     }
 
     //--------------------------------------------------------------------------
@@ -376,7 +426,7 @@ namespace KafkaPlugin
 
                     // Set any global configurations from file, allowing
                     // overrides of above settings
-                    applyConfig(GLOBAL_CONFIG_FILENAME, globalConfig, traceLevel);
+                    applyGlobalConfig(globalConfig, traceLevel);
 
                     // Set producer callbacks
                     globalConfig->set("event_cb", static_cast<RdKafka::EventCb*>(this), errStr);
@@ -391,8 +441,7 @@ namespace KafkaPlugin
                         RdKafka::Conf* topicConfPtr = RdKafka::Conf::create(RdKafka::Conf::CONF_TOPIC);
 
                         // Set any topic configurations from file
-                        std::string confName = "kafka_publisher_topic_" + topic + ".conf";
-                        applyConfig(confName.c_str(), topicConfPtr, traceLevel);
+                        applyProducerConfig(topic, topicConfPtr, traceLevel);
 
                         // Create the topic
                         topicPtr.store(RdKafka::Topic::create(producerPtr, topic, topicConfPtr, errStr), std::memory_order_release);
@@ -561,7 +610,7 @@ namespace KafkaPlugin
 
                     // Set any global configurations from file, allowing
                     // overrides of above settings
-                    applyConfig(GLOBAL_CONFIG_FILENAME, globalConfig, traceLevel);
+                    applyGlobalConfig(globalConfig, traceLevel);
 
                     // Set consumer callbacks
                     globalConfig->set("event_cb", static_cast<RdKafka::EventCb*>(this), errStr);
@@ -580,8 +629,7 @@ namespace KafkaPlugin
 
                         // Set any topic configurations from file, allowing
                         // overrides of above settings
-                        std::string confName = "kafka_consumer_topic_" + topic + ".conf";
-                        applyConfig(confName.c_str(), topicConfPtr, traceLevel);
+                        applyConsumerConfig(topic, topicConfPtr, traceLevel);
 
                         // Ensure that some items are set a certain way
                         // by setting them after loading the external conf
@@ -963,7 +1011,7 @@ namespace KafkaPlugin
         if (globalConfig)
         {
             // Load global config to pick up any protocol modifications
-            applyConfig(GLOBAL_CONFIG_FILENAME, globalConfig, traceLevel);
+            applyGlobalConfig(globalConfig, traceLevel);
 
             // rd_kafka_new() takes ownership of the lower-level conf object, which in this case is a
             // pointer currently owned by globalConfig; we need to pass a duplicate
