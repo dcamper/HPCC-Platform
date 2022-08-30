@@ -94,7 +94,7 @@ namespace KafkaPlugin
             // Containerized configurations are stored within a helm chart and loaded by
             // the running process before we get to this point
 
-            fullConfigPath.set("plugins/kafka");
+            fullConfigPath.set("kafka");
 
             switch (confType)
             {
