@@ -99,14 +99,14 @@ namespace KafkaPlugin
             switch (confType)
             {
                 case t_Producer:
-                    fullConfigPath.appendf("/producers/topics[name='%s']/params", topicName);
+                    fullConfigPath.appendf("/producers[topic='%s']", topicName);
                     break;
                 case t_Consumer:
-                    fullConfigPath.appendf("/consumers/topics[name='%s']/params", topicName);
+                    fullConfigPath.appendf("/consumers[topic='%s']", topicName);
                     break;
                 default:
                     // Either global or unknown
-                    fullConfigPath.append("/global/params");
+                    fullConfigPath.append("/global");
                     break;
             }
 
