@@ -110,45 +110,45 @@ namespace KafkaPlugin
             }
 
             Owned<const IPropertyTree> properties = getGlobalConfigSP()->getPropTree(fullConfigPath.str());
-            
+
             if (properties)
             {
-				Owned<IPropertyTreeIterator> props = properties->getElements("*");
+                Owned<IPropertyTreeIterator> props = properties->getElements("*");
 
-				ForEach(*props)
-				{
-					IPropertyTree& propTree = props->query();
-					Owned<IAttributeIterator> attributes = propTree.getAttributes();
+                ForEach(*props)
+                {
+                    IPropertyTree& propTree = props->query();
+                    Owned<IAttributeIterator> attributes = propTree.getAttributes();
 
-					ForEach(*attributes)
-					{
-						const char* key = attributes->queryName();
+                    ForEach(*attributes)
+                    {
+                        const char* key = attributes->queryName();
 
-						if (key && *key)
-						{
-							if (strncmp(key, "metadata.broker.list", 20) != 0)
-							{
-								const char* value = attributes->queryValue();
+                        if (key && *key && strncmp(key, "topic", 5) != 0)
+                        {
+                            if (strncmp(key, "metadata.broker.list", 20) != 0)
+                            {
+                                const char* value = attributes->queryValue();
 
-								if (value && *value)
-								{
-									if (configPtr->set(key, value, errStr) != RdKafka::Conf::CONF_OK)
-									{
-										DBGLOG("Kafka: Failed to set config param from %s: '%s' = '%s'; error: '%s'", fullConfigPath.str(), key, value, errStr.c_str());
-									}
-									else if (traceLevel > 4)
-									{
-										DBGLOG("Kafka: Set config param from %s: '%s' = '%s'", fullConfigPath.str(), key, value);
-									}
-								}
-							}
-							else
-							{
-								DBGLOG("Kafka: Setting '%s' ignored in config %s", key, fullConfigPath.str());
-							}
-						}
-					}
-				}
+                                if (value && *value)
+                                {
+                                    if (configPtr->set(key, value, errStr) != RdKafka::Conf::CONF_OK)
+                                    {
+                                        DBGLOG("Kafka: Failed to set config param from %s: '%s' = '%s'; error: '%s'", fullConfigPath.str(), key, value, errStr.c_str());
+                                    }
+                                    else if (traceLevel > 4)
+                                    {
+                                        DBGLOG("Kafka: Set config param from %s: '%s' = '%s'", fullConfigPath.str(), key, value);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                DBGLOG("Kafka: Setting '%s' ignored in config %s", key, fullConfigPath.str());
+                            }
+                        }
+                    }
+                }
             }
 #else
             // Non-containerized configurations are stored within physical files located
