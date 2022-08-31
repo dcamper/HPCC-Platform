@@ -385,6 +385,26 @@ bundles: []
 # for example
 # - name: DataPatterns
 
+kafka:
+## Overrides for Kafka connections can be supplied here.  The property should be the Kafka configuration
+## name you want to override, and the value the corresponding configuration value.  Properties defined
+## at this level are applied to all connections.
+  # connect.timeout.ms: 5000
+  producers:
+  # Per-topic producer configuration overrides can be provided here.  The 'topic' property is required
+  # and specifies the topic to which the confiugration applies.  Multiple topics may be defined.
+    # - topic: test-producer-1
+    #   connect.timeout.ms: 7000
+    # - topic: test-producer-2
+    #   connect.timeout.ms: 8000
+  consumers:
+  # Per-topic consume configuration overrides can be provided here.  The 'topic' property is required
+  # and specifies the topic to which the confiugration applies.  Multiple topics may be defined.
+    # - topic: test-consumer-1
+    #   backoff.increment.ms: 1500
+    # - topic: test-consumer-2
+    #   backoff.increment.ms: 1600
+
 # A dafilesrv 'stream' service is required to expose HPCC file access to 3rd parties (e.g. Spark / Java)
 # Access will only be granted to requests that have been signed by the DFUFileAccess service
 dafilesrv:

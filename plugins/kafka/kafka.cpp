@@ -106,7 +106,6 @@ namespace KafkaPlugin
                     break;
                 default:
                     // Either global or unknown
-                    fullConfigPath.append("/global");
                     break;
             }
 

@@ -139,6 +139,21 @@
       "type": "array",
       "items": { "$ref": "#/definitions/bundle" }
     },
+    "kafka": {
+	  "description": "kafka connection configuration options",
+	  "type": "object",
+	  "properties": {
+		"producers": {
+		  "type": "array",
+		  "items": { "$ref": "#/definitions/kafkaProducerConsumer" }
+		},
+		"consumers": {
+		  "type": "array",
+		  "items": { "$ref": "#/definitions/kafkaProducerConsumer" }
+		}
+	  },
+	  "additionalproperties": true
+	},
     "dali": {
       "description": "dali process",
       "type": "array",
@@ -1164,6 +1179,14 @@
         }
       }
     },
+	"kafkaProducerConsumer": {
+	  "type": "object",
+	  "properties": {
+		"topic": { "type": "string" }
+	  },
+	  "required": [ "topic" ],
+	  "additionalproperties": true
+	},
     "dali": {
       "type": "object",
       "required": [ "name", "auth" ],
