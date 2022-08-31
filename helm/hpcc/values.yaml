@@ -387,19 +387,23 @@ bundles: []
 
 kafka:
 ## Overrides for Kafka connections can be supplied here.  The property should be the Kafka configuration
-## name you want to override, and the value the corresponding configuration value.  Properties defined
-## at this level are applied to all connections.
+## name you want to override, and the value the corresponding configuration value.  Any number of properties
+## are supported.  Properties defined at this level are applied to all connections.
   # connect.timeout.ms: 5000
   producers:
   # Per-topic producer configuration overrides can be provided here.  The 'topic' property is required
-  # and specifies the topic to which the confiugration applies.  Multiple topics may be defined.
+  # and specifies the topic to which the confiugration applies, and the topic value should be unique
+  # among all Kafka producers defined here.  Multiple topics may be defined.  Any number of properties
+  # are supported within a topic.
     # - topic: test-producer-1
     #   connect.timeout.ms: 7000
     # - topic: test-producer-2
     #   connect.timeout.ms: 8000
   consumers:
-  # Per-topic consume configuration overrides can be provided here.  The 'topic' property is required
-  # and specifies the topic to which the confiugration applies.  Multiple topics may be defined.
+  # Per-topic consumer configuration overrides can be provided here.  The 'topic' property is required
+  # and specifies the topic to which the confiugration applies, and the topic value should be unique
+  # among all Kafka consumers defined here.  Multiple topics may be defined.  Any number of properties
+  # are supported within a topic.
     # - topic: test-consumer-1
     #   backoff.increment.ms: 1500
     # - topic: test-consumer-2
