@@ -109,16 +109,16 @@ namespace KafkaPlugin
                     break;
             }
 
-            Owned<const IPropertyTree> properties = getGlobalConfigSP()->getPropTree(fullConfigPath.str());
+            IPropertyTree* properties = getComponentConfigSP()->queryPropTree(fullConfigPath.str());
 
             if (properties)
             {
-                Owned<IPropertyTreeIterator> props = properties->getElements("*");
+                IPropertyTreeIterator* props = properties->queryElements("*");
 
                 ForEach(*props)
                 {
                     IPropertyTree& propTree = props->query();
-                    Owned<IAttributeIterator> attributes = propTree.getAttributes();
+                    IAttributeIterator* attributes = propTree.queryAttributes();
 
                     ForEach(*attributes)
                     {
