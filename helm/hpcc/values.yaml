@@ -389,6 +389,7 @@ kafka:
 ## Overrides for Kafka connections can be supplied here.  The property should be the Kafka configuration
 ## name you want to override, and the value the corresponding configuration value.  Any number of properties
 ## are supported.  Properties defined at this level are applied to all connections.
+## Detailed configuration options can be found at https://kafka.apache.org/07/documentation/#configuration
   # connect.timeout.ms: 5000
   producers:
   # Per-topic producer configuration overrides can be provided here.  The 'topic' property is required
