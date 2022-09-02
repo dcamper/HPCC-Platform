@@ -66,6 +66,8 @@ data:
 {{ toYaml $thorAgentScope | indent 6 }}
 {{- include "hpcc.generateLoggingConfig" (dict "root" .root "me" $thorAgentScope) | indent 6 }}
       type: thor
+    kafka:
+{{ toYaml .root.kafka | indent 6 }}
     global:
 {{ include "hpcc.generateGlobalConfigMap" .root| indent 6 }}
 
