@@ -109,7 +109,7 @@ namespace KafkaPlugin
                     break;
             }
 
-            Owned<const IPropertyTree> properties = getGlobalConfigSP()->getPropTree(fullConfigPath.str());
+            Owned<const IPropertyTree> properties = getComponentConfigSP()->getPropTree(fullConfigPath.str());
 
             if (properties)
             {
