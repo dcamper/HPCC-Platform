@@ -390,25 +390,17 @@ kafka:
 ## name you want to override, and the value the corresponding configuration value.  Any number of properties
 ## are supported.  Properties defined at this level are applied to all connections.
 ## Detailed configuration options can be found at https://kafka.apache.org/07/documentation/#configuration
-  # connect.timeout.ms: 5000
+  connect.timeout.ms: 5000
   producers:
-  # Per-topic producer configuration overrides can be provided here.  The 'topic' property is required
-  # and specifies the topic to which the confiugration applies, and the topic value should be unique
-  # among all Kafka producers defined here.  Multiple topics may be defined.  Any number of properties
-  # are supported within a topic.
-    # - topic: test-producer-1
-    #   connect.timeout.ms: 7000
-    # - topic: test-producer-2
-    #   connect.timeout.ms: 8000
+    - topic: test-producer-1
+      connect.timeout.ms: 7000
+    - topic: test-producer-2
+      connect.timeout.ms: 8000
   consumers:
-  # Per-topic consumer configuration overrides can be provided here.  The 'topic' property is required
-  # and specifies the topic to which the confiugration applies, and the topic value should be unique
-  # among all Kafka consumers defined here.  Multiple topics may be defined.  Any number of properties
-  # are supported within a topic.
-    # - topic: test-consumer-1
-    #   backoff.increment.ms: 1500
-    # - topic: test-consumer-2
-    #   backoff.increment.ms: 1600
+    - topic: test-consumer-1
+      backoff.increment.ms: 1500
+    - topic: test-consumer-2
+      backoff.increment.ms: 1600
 
 # A dafilesrv 'stream' service is required to expose HPCC file access to 3rd parties (e.g. Spark / Java)
 # Access will only be granted to requests that have been signed by the DFUFileAccess service
