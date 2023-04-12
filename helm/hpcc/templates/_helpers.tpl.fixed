@@ -209,6 +209,9 @@ storage:
 {{ toYaml $storage.remote | indent 2 }}
 {{- end }}
   dataPlane: {{ include "hpcc.getDefaultDataPlane" . }}
+{{- if hasKey $storage "indexBuildPlane" }}
+  indexBuildPlane: {{ $storage.indexBuildPlane }}
+{{- end }}
   planes:
 {{- /*Generate entries for each data plane (removing the pvc).  Exclude the planes used for dlls and dali.*/ -}}
 {{- range $plane := $planes }}
@@ -323,7 +326,7 @@ Add ConfigMap volume for a component
 
 {{/*
 Add volume mounts
-Pass in root and includeCategories (optional) and/or includeNames (optional)
+Pass in root, me (the component), includeCategories (optional) and/or includeNames (optional)
 Note: if there are multiple planes (other than dll, dali and spill planes), they should be all called with a single call
 to addVolumeMounts so that if a plane can be used for multiple purposes then duplicate volume mounts are not created.
 */}}
@@ -333,11 +336,12 @@ to addVolumeMounts so that if a plane can be used for multiple purposes then dup
 {{- $planes := ($storage.planes | default list) -}}
 {{- $includeCategories := .includeCategories | default list -}}
 {{- $includeNames := .includeNames | default list -}}
+{{- $component := .me -}}
 {{- $previousMounts := dict -}}
 {{- range $plane := $planes -}}
  {{- if not $plane.disabled }}
-  {{- if or (has $plane.category $includeCategories) (has $plane.name $includeNames) }}
-
+  {{- $componentMatches := or (not (hasKey $plane "components")) (has $component.name $plane.components) -}}
+  {{- if and (or (has $plane.category $includeCategories) (has $plane.name $includeNames)) $componentMatches }}
    {{- /*This plane is required - generate a mount if it has not already been created, and any aliases*/ -}}
    {{- if or ($plane.pvc) (hasKey $plane "storageClass") }}
     {{- if not (hasKey $previousMounts $plane.prefix) }}
@@ -359,7 +363,8 @@ to addVolumeMounts so that if a plane can be used for multiple purposes then dup
    {{- /*Generate entries for each alias of the plane*/ -}}
    {{- $curAlias := dict "num" 1 -}}
    {{- range $alias := $plane.aliases | default list }}
-    {{- if $alias.pvc }}
+    {{- $aliasComponentMatches := or (not (hasKey $alias "components")) (has $component.name $alias.components) -}}
+    {{- if and $alias.pvc $aliasComponentMatches }}
      {{- if not (hasKey $previousMounts $alias.prefix) }}
       {{- $mountPath := $alias.prefix }}
       {{- $numMounts := int ( $alias.numMounts | default $plane.numDevices | default 1 ) }}
@@ -385,7 +390,7 @@ to addVolumeMounts so that if a plane can be used for multiple purposes then dup
 
 {{/*
 Add volumes
-Pass in root, includeCategories (optional) and includeNames (optional)
+Pass in root, me (the component), includeCategories (optional) and includeNames (optional)
 The plane will generate a volume if it matches either an includeLabel or an includeName
 */}}
 {{- define "hpcc.addVolumes" -}}
@@ -394,11 +399,12 @@ The plane will generate a volume if it matches either an includeLabel or an incl
 {{- $planes := ($storage.planes | default list) -}}
 {{- $includeCategories := .includeCategories | default list -}}
 {{- $includeNames := .includeNames | default list -}}
+{{- $component := .me -}}
 {{- $previousMounts := dict -}}
 {{- range $plane := $planes -}}
  {{- if not $plane.disabled -}}
-  {{- if or (has $plane.category $includeCategories) (has $plane.name $includeNames) }}
-
+  {{- $componentMatches := or (not (hasKey $plane "components")) (has $component.name $plane.components) -}}
+  {{- if and (or (has $plane.category $includeCategories) (has $plane.name $includeNames)) $componentMatches }}
    {{- if or ($plane.pvc) (hasKey $plane "storageClass") -}}
     {{- if not (hasKey $previousMounts $plane.prefix) }}
      {{- $pvc := hasKey $plane "pvc" | ternary $plane.pvc (printf "%s-%s-pvc" (include "hpcc.fullname" $) $plane.name) }}
@@ -421,7 +427,8 @@ The plane will generate a volume if it matches either an includeLabel or an incl
    {{- /*Generate entries for each alias of the plane*/ -}}
    {{- $curAlias := dict "num" 1 -}}
    {{- range $alias := $plane.aliases | default list }}
-    {{- if $alias.pvc -}}
+    {{- $aliasComponentMatches := or (not (hasKey $alias "components")) (has $component.name $alias.components) -}}
+    {{- if and $alias.pvc $aliasComponentMatches }}
      {{- if not (hasKey $previousMounts $alias.prefix) }}
       {{- $pvc := $alias.pvc }}
       {{- $numMounts := int ( $alias.numMounts | default $plane.numDevices | default 1 ) }}
@@ -449,12 +456,13 @@ The plane will generate a volume if it matches either an includeLabel or an incl
 
 {{/*
 Check that the data plane name is valid, and report an error if not
-Pass in dict with root, planeName
+Pass in dict with root, planeName and optional contextPrefix
 */}}
 {{- define "hpcc.checkPlaneExists" -}}
 {{- $storage := (.root.Values.storage | default dict) -}}
 {{- $planes := ($storage.planes | default list) -}}
 {{- $name := .planeName -}}
+{{- $ctxMsg := .contextPrefix | default "" -}}
 {{- $matched := dict -}}
 {{- range $plane := $planes -}}
  {{- if not $plane.disabled -}}
@@ -464,7 +472,7 @@ Pass in dict with root, planeName
  {{- end -}}
 {{- end -}}
 {{- if not $matched.ok -}}
- {{- $_ := fail (printf "Storage plane %s does not exist" $name) -}}
+ {{- $_ := fail (printf "%sStorage plane %s does not exist" $ctxMsg $name) -}}
 {{- end -}}
 {{- end -}}
 
@@ -637,6 +645,10 @@ Check that the storage and spill planes for a component exist
  {{- $search := .me.spillPlane -}}
  {{- include "hpcc.checkValidStoragePlane" (dict "search" $search "root" .root "category" "spill" "type" "storage spill" "for" .me.name) -}}
 {{- end }}
+{{- if (hasKey .me "indexBuildPlane") }}
+ {{- $search := .me.indexBuildPlane -}}
+ {{- include "hpcc.checkValidStoragePlane" (dict "search" $search "root" .root "category" "data" "type" "storage data" "for" .me.name) -}}
+{{- end }}
 {{- end -}}
 
 {{/*
@@ -692,8 +704,9 @@ Pass in dict with root, component (in case of error), optional (true if daliArg 
   {{- else -}}
     {{- $dali := (index .root.Values.dali 0) -}}
     {{- $daliService := $dali.service | default dict -}}
-    {{- $daliServicePort := $daliService.servicePort | default 7070 -}}
-"--daliServers={{ (index .root.Values.dali 0).name }}:{{ $daliServicePort }}"
+    {{- $daliHost := .overrideDaliHost | default $dali.name -}}
+    {{- $daliServicePort := .overrideDaliPort | default ($daliService.servicePort | default 7070) -}}
+"--daliServers={{ $daliHost }}:{{ $daliServicePort }}"
   {{- end -}}
 {{- end -}}
 
@@ -774,11 +787,13 @@ NB: uid=10000 and gid=10001 are the uid/gid of the hpcc user, built into platfor
 {{- $planes := ($storage.planes | default list) -}}
 {{- $includeCategories := .includeCategories | default list -}}
 {{- $includeNames := .includeNames | default list -}}
+{{- $component := .me -}}
 {{- range $plane := $planes -}}
  {{- if not $plane.disabled -}}
   {{- if and ($plane.forcePermissions) (or ($plane.pvc) (hasKey $plane "storageClass")) -}}
    {{- $mountpath := $plane.prefix -}}
-   {{- if or (has $plane.category $includeCategories) (has $plane.name $includeNames) -}}
+   {{- $componentMatches := or (not (hasKey $plane "components")) (has $component.name $plane.components) -}}
+   {{- if and (or (has $plane.category $includeCategories) (has $plane.name $includeNames)) $componentMatches }}
     {{- $volumeName := (printf "%s-pv" $plane.name) -}}
    {{- include "hpcc.changeMountPerms" (dict "root" $root "uid" $uid "gid" $gid "volumeName" $volumeName "volumePath" $plane.prefix) | nindent 0 }}
    {{- end -}}
@@ -1101,6 +1116,8 @@ Pass in dict with root, me and dali if container in dali pod
 */}}
 {{- define "hpcc.addSashaContainer" }}
 {{- $serviceName := printf "sasha-%s" .me.name }}
+{{- $overrideDaliHost := .overrideDaliHost | default "" }}
+{{- $overrideDaliPort := .overrideDaliPort | default 0 }}
 - name: {{ $serviceName | quote }}
   workingDir: /var/lib/HPCCSystems
   command: [ saserver ] 
@@ -1109,7 +1126,7 @@ Pass in dict with root, me and dali if container in dali pod
           {{ include "hpcc.configArg" . }},
 {{- end }}
           "--service={{ .me.name }}",
-{{ include "hpcc.daliArg" (dict "root" .root "component" "Sasha" "optional" false) | indent 10 }}
+{{ include "hpcc.daliArg" (dict "root" .root "component" "Sasha" "optional" false "overrideDaliHost" $overrideDaliHost "overrideDaliPort" $overrideDaliPort) | indent 10 }}
         ]
 {{- include "hpcc.addResources" (dict "me" .me.resources) | indent 2 }}
 {{- include "hpcc.addSecurityContext" . | indent 2 }}
@@ -2127,6 +2144,46 @@ spec:
 {{- end -}}
 
 {{/*
+<<<<<<< HEAD
+Generate a list of warnings
+Pass in dict with root
+*/}}
+{{- define "hpcc.generateWarnings" -}}
+{{- $ctx := dict "warnings" list "root" .root -}}
+{{- include "hpcc.getWarnings" $ctx -}}
+{{- if $ctx.warnings }}
+warnings:
+ {{- range $warning := $ctx.warnings }}
+- msg: {{ $warning.msg | quote }}
+  severity: {{ $warning.severity | quote }}
+  source: {{ $warning.source | quote }}
+ {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Print warnings
+Pass in dict with root
+*/}}
+{{- define "hpcc.printWarnings" -}}
+{{- $ctx := dict "warnings" list "root" .root -}}
+{{- include "hpcc.getWarnings" $ctx -}}
+{{- range $warning := $ctx.warnings }}
+ {{ printf "**** %s: %s ****" (upper $warning.severity) $warning.msg }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns true if resources exist
+Pass in dict with resources object
+*/}}
+{{- define "hpcc.hasResources" -}}
+{{- if .resources -}}
+ {{- if and .resources.cpu .resources.memory -}}
+  true
+ {{- end -}}
+{{- end -}}
+=======
 Pass in dict with root and me
 Fills "result" dictionary with "planeCategories" and "namedPlanes"
 */}}
@@ -2140,4 +2197,5 @@ Fills "result" dictionary with "planeCategories" and "namedPlanes"
 {{- end -}}
 {{- $_ := set .result "planeCategories" $planeCategories -}}
 {{- $_ := set .result "namedPlanes" $namedPlanes -}}
+>>>>>>> origin/candidate-8.10.x
 {{- end -}}
