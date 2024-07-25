@@ -311,7 +311,7 @@ public:
         if (_keep)
         {
             sample = (char *)rtlMalloc(subjectSize + 1);  //required for findstr
-            memcpy(sample, _subject + subjectOffset, subjectSize);
+            memcpy_iflen(sample, _subject + subjectOffset, subjectSize);
             sample[subjectSize] = '\0';
             subject = sample;
         }
@@ -353,7 +353,7 @@ public:
             const char * matchStart = subject + ovector[2 * n];
             outlen = ovector[2 * n + 1] - ovector[2 * n];
             out = (char *)rtlMalloc(outlen);
-            memcpy(out, matchStart, outlen);
+            memcpy_iflen(out, matchStart, outlen);
         }
         else
         {
@@ -371,7 +371,7 @@ public:
             unsigned substrLen = ovector[2 * n + 1] - ovector[2 * n];
             if (substrLen >= outlen)
                 substrLen = outlen - 1;
-            memcpy(out, matchStart, substrLen);
+            memcpy_iflen(out, matchStart, substrLen);
             out[substrLen] = 0;
         }
         else
@@ -669,7 +669,7 @@ public:
                 // Append the number of characters in the match
                 * (size32_t *) outData = (isUTF8Enabled ? rtlUtf8Length(matchSize, matchStart) : matchSize);
                 // Copy the bytes
-                memcpy(outData + sizeof(size32_t), matchStart, matchSize);
+                memcpy_iflen(outData + sizeof(size32_t), matchStart, matchSize);
                 outBytes += matchSize + sizeof(size32_t);
 
                 // Update search offset (which is in code units)
@@ -889,7 +889,7 @@ public:
             outlen = ovector[2 * n + 1] - ovector[2 * n];
             PCRE2_SIZE outSize = outlen * sizeof(UChar);
             out = (UChar *)rtlMalloc(outSize);
-            memcpy(out, matchStart, outSize);
+            memcpy_iflen(out, matchStart, outSize);
         }
         else
         {
@@ -907,7 +907,7 @@ public:
             unsigned substrLen = ovector[2 * n + 1] - ovector[2 * n];
             if (substrLen >= outlen)
                 substrLen = outlen - 1;
-            memcpy(out, matchStart, substrLen * sizeof(UChar));
+            memcpy_iflen(out, matchStart, substrLen * sizeof(UChar));
             out[substrLen] = 0;
         }
         else
@@ -1160,7 +1160,7 @@ public:
                 out.ensureAvailable(outBytes + matchSize + sizeof(size32_t));
                 byte * outData = out.getbytes() + outBytes;
                 * (size32_t *) outData = matchLen;
-                memcpy(outData + sizeof(size32_t), matchStart, matchSize);
+                memcpy_iflen(outData + sizeof(size32_t), matchStart, matchSize);
                 outBytes += matchSize + sizeof(size32_t);
 
                 // Update offset
