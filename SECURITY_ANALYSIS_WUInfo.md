@@ -349,6 +349,12 @@ To test the implementation:
 - Add option to completely exclude sensitive fields instead of redacting
 - Implement pattern-based detection (regex) for credential values
 - Add metrics for tracking redaction frequency
+- Consider Aho-Corasick algorithm if keyword list grows significantly (> 50 keywords)
+
+**Code Review Notes:**
+See CODE_REVIEW_RESOLUTIONS.md for detailed discussion of:
+- Configuration-based keyword customization (deferred to future PR)
+- Algorithm optimization considerations (deferred pending profiling)
 
 ---
 
