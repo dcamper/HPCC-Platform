@@ -291,14 +291,73 @@ The WSDL itself reveals:
 - Providing minimal WSDL for public consumption
 - Documenting API externally with sanitized examples
 
+## Implemented Security Enhancements
+
+### 1. Sensitive Value Redaction (IMPLEMENTED)
+**Date:** 2025-11-05  
+**Files Modified:** `esp/services/ws_workunits/ws_workunitsHelpers.cpp`
+
+**Description:**
+Implemented automatic detection and redaction of potentially sensitive values in debug and application value fields. The system now scans field names for common credential-related keywords and redacts their values before exposing them via the WUInfo endpoint.
+
+**Implementation Details:**
+- Added `isSensitiveValueName()` function that detects field names containing sensitive keywords
+- Added `sanitizeSensitiveValue()` function that redacts values when sensitive names are detected
+- Modified `getDebugValues()` to sanitize debug values before returning them
+- Modified `getApplicationValues()` to sanitize application values before returning them
+- Added security logging when values are redacted for audit purposes
+
+**Keywords Detected:**
+- password, passwd, pwd
+- secret, token, apikey, api_key, api-key
+- credential, auth, authorization
+- private, priv, key
+- connection, connectionstring, conn_str
+- bearer, oauth
+
+**Redaction Behavior:**
+When a field name contains any of the above keywords (case-insensitive), its value is replaced with `***REDACTED***` and a warning is logged with the workunit ID.
+
+**Example:**
+```
+Before:
+  DebugValue: name="api_token", value="sk_live_51abc123..."
+  
+After:
+  DebugValue: name="api_token", value="***REDACTED***"
+  Log: "Security: Redacted potentially sensitive value 'api_token' in workunit W20231105-123456"
+```
+
+**Impact:**
+- ✅ Prevents accidental credential exposure via debug/application values
+- ✅ Provides audit trail of redacted values
+- ✅ Backward compatible - only affects values with sensitive-sounding names
+- ✅ No performance impact - simple string matching operation
+
+**Testing:**
+To test the implementation:
+1. Create a workunit with debug values containing sensitive keywords
+2. Query WUInfo for that workunit
+3. Verify that sensitive values are redacted
+4. Check logs for security warnings
+
+**Future Enhancements:**
+- Add configuration option to customize sensitive keywords list
+- Add option to completely exclude sensitive fields instead of redacting
+- Implement pattern-based detection (regex) for credential values
+- Add metrics for tracking redaction frequency
+
+---
+
 ## Recommendations
 
 ### High Priority
 
-1. **Implement Sensitive Data Filtering**
-   - Add a configuration option to filter sensitive debug and application values
-   - Implement pattern-based detection for credentials, tokens, and passwords
-   - Add a "sanitized" mode that redacts potentially sensitive information
+1. **✅ IMPLEMENTED - Sensitive Data Filtering**
+   - ✅ Implemented keyword-based detection for credentials, tokens, and passwords
+   - ✅ Added automatic redaction for potentially sensitive debug and application values
+   - ⚠️ Future: Add configuration option to customize sensitive keywords list
+   - ⚠️ Future: Implement pattern-based (regex) detection for credential values
 
 2. **Enhance Access Logging**
    - Log all WUInfo access requests with user identity and WUID

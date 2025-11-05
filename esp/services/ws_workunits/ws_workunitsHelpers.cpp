@@ -968,7 +968,8 @@ void WsWuInfo::getApplicationValues(IEspECLWorkunit &info, unsigned long flags)
             Owned<IEspApplicationValue> t= createApplicationValue("","");
             t->setApplication(val.queryApplication());
             t->setName(val.queryName());
-            t->setValue(val.queryValue());
+            // Sanitize potentially sensitive application values
+            t->setValue(sanitizeSensitiveValue(val.queryName(), val.queryValue(), wuid.str()));
             av.append(*t.getLink());
 
         }
@@ -982,6 +983,54 @@ void WsWuInfo::getApplicationValues(IEspECLWorkunit &info, unsigned long flags)
         info.setApplicationValuesDesc(eMsg.str());
         e->Release();
     }
+}
+
+// Helper function to detect potentially sensitive field names
+// Returns true if the name suggests the value might contain sensitive data
+static bool isSensitiveValueName(const char* name)
+{
+    if (!name || !*name)
+        return false;
+    
+    // Convert to lowercase for case-insensitive comparison
+    StringBuffer lowerName(name);
+    lowerName.toLowerCase();
+    
+    // List of keywords that suggest sensitive data
+    static const char* sensitiveKeywords[] = {
+        "password", "passwd", "pwd",
+        "secret", "token", "apikey", "api_key", "api-key",
+        "credential", "auth", "authorization",
+        "private", "priv", "key",
+        "connection", "connectionstring", "conn_str",
+        "bearer", "oauth",
+        nullptr
+    };
+    
+    // Check if name contains any sensitive keywords
+    for (const char** keyword = sensitiveKeywords; *keyword; ++keyword)
+    {
+        if (strstr(lowerName.str(), *keyword))
+            return true;
+    }
+    
+    return false;
+}
+
+// Helper function to sanitize sensitive values
+// Returns a redacted placeholder if the name suggests sensitive data
+static const char* sanitizeSensitiveValue(const char* name, const char* value, const char* wuid = nullptr)
+{
+    if (isSensitiveValueName(name))
+    {
+        // Log security event when redacting sensitive values
+        if (wuid)
+            IWARNLOG("Security: Redacted potentially sensitive value '%s' in workunit %s", name, wuid);
+        else
+            IWARNLOG("Security: Redacted potentially sensitive value '%s'", name);
+        return "***REDACTED***";
+    }
+    return value;
 }
 
 void WsWuInfo::getDebugValues(IEspECLWorkunit &info, unsigned long flags)
@@ -1010,7 +1059,8 @@ void WsWuInfo::getDebugValues(IEspECLWorkunit &info, unsigned long flags)
 
             Owned<IEspDebugValue> t= createDebugValue("","");
             t->setName(name.str());
-            t->setValue(val.str());
+            // Sanitize potentially sensitive debug values
+            t->setValue(sanitizeSensitiveValue(name.str(), val.str(), wuid.str()));
             dv.append(*t.getLink());
         }
         if (version >= 1.50)
