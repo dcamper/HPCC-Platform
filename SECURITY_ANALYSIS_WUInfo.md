@@ -311,7 +311,9 @@ Implemented automatic detection and redaction of potentially sensitive values in
 - password, passwd, pwd
 - secret, token, apikey, api_key, api-key
 - credential, auth, authorization
-- private, priv, key
+- privatekey, private_key, privkey
+- secretkey, secret_key
+- encryptionkey, encryption_key
 - connection, connectionstring, conn_str
 - bearer, oauth
 
@@ -332,7 +334,8 @@ After:
 - ✅ Prevents accidental credential exposure via debug/application values
 - ✅ Provides audit trail of redacted values
 - ✅ Backward compatible - only affects values with sensitive-sounding names
-- ✅ No performance impact - simple string matching operation
+- ✅ Optimized performance - no string allocation for case conversion
+- ✅ Reduced false positives - uses specific key-related keywords
 
 **Testing:**
 To test the implementation:

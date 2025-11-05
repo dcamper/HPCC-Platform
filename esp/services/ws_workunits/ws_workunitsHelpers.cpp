@@ -992,26 +992,33 @@ static bool isSensitiveValueName(const char* name)
     if (!name || !*name)
         return false;
     
-    // Convert to lowercase for case-insensitive comparison
-    StringBuffer lowerName(name);
-    lowerName.toLowerCase();
-    
     // List of keywords that suggest sensitive data
     static const char* sensitiveKeywords[] = {
         "password", "passwd", "pwd",
         "secret", "token", "apikey", "api_key", "api-key",
         "credential", "auth", "authorization",
-        "private", "priv", "key",
+        "privatekey", "private_key", "privkey",
+        "secretkey", "secret_key",
+        "encryptionkey", "encryption_key",
         "connection", "connectionstring", "conn_str",
         "bearer", "oauth",
         nullptr
     };
     
-    // Check if name contains any sensitive keywords
+    // Perform case-insensitive substring search without allocating a new string
     for (const char** keyword = sensitiveKeywords; *keyword; ++keyword)
     {
-        if (strstr(lowerName.str(), *keyword))
-            return true;
+        const char* haystack = name;
+        const char* needle = *keyword;
+        size_t needleLen = strlen(needle);
+        
+        // Case-insensitive substring search
+        while (*haystack)
+        {
+            if (strnicmp(haystack, needle, needleLen) == 0)
+                return true;
+            haystack++;
+        }
     }
     
     return false;

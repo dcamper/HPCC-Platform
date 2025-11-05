@@ -149,7 +149,9 @@ _To be filled during testing_
    - secret, token
    - apikey, api_key, api-key
    - credential, auth, authorization
-   - private, priv, key
+   - privatekey, private_key, privkey
+   - secretkey, secret_key
+   - encryptionkey, encryption_key
    - connection, connectionstring, conn_str
    - bearer, oauth
 
@@ -157,7 +159,7 @@ _To be filled during testing_
 
 **Expected Result:**
 - All fields with sensitive keywords should be redacted
-- Approximately 17+ redaction warnings in security log
+- Approximately 20+ redaction warnings in security log
 
 **Actual Result:**
 _To be filled during testing_
